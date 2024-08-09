@@ -38,16 +38,12 @@ const Page = async ({ params }: PageProps) => {
     await ragChat.context.add({
       type: "html", // The type of the context to add
       source: reconstructedUrl, // The URL to add as context
-      config: {
-        chunkOverlap: 50, // The overlap between chunks in the context
-        chunkSize: 200, // The size of each chunk in the context
-      },
     });
 
     await redis.sadd("indexed-urls", reconstructedUrl); // Add the URL to the Redis set
   }
 
-  return <ChatWrapper />;
+  return <ChatWrapper sessionId={sessionId} />;
 };
 
 export default Page;
