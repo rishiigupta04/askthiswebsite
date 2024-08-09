@@ -7,6 +7,7 @@
 import { ChatWrapper } from "@/components/ChatWrapper";
 import { ragChat } from "@/lib/rag-chat";
 import { redis } from "@/lib/redis";
+import { cookies } from "next/headers";
 
 interface PageProps {
   params: {
@@ -22,17 +23,24 @@ function reconstructUrl({ url }: { url: string[] }) {
 }
 
 const Page = async ({ params }: PageProps) => {
+  const sessionCookie = cookies().get("sessionId")?.value;
   // Decode the URL components and join them together to form a complete URL
   const reconstructedUrl = reconstructUrl({ url: params.url as string[] });
 
-  const sessionId = "mock-session";
-
+  const sessionId = (reconstructedUrl + "--" + sessionCookie).replace(
+    /\//g,
+    ""
+  );
   // Check if the URL has already been indexed in Redis
   const isAlreadyIndexed = await redis.sismember(
     "indexed-urls", // The Redis set that stores the URLs
     reconstructedUrl // The URL to check against
   );
 
+  const initialMessages = await ragChat.history.getMessages({
+    amount: 10,
+    sessionId: sessionId,
+  });
   // If the URL has not been indexed, add it to the set and index it with the RAGChat model
   if (!isAlreadyIndexed) {
     await ragChat.context.add({
@@ -43,7 +51,7 @@ const Page = async ({ params }: PageProps) => {
     await redis.sadd("indexed-urls", reconstructedUrl); // Add the URL to the Redis set
   }
 
-  return <ChatWrapper sessionId={sessionId} />;
+  return <ChatWrapper sessionId={sessionId} initialMessages={initialMessages} />;
 };
 
 export default Page;
